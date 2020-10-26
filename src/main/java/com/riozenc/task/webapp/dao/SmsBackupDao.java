@@ -3,6 +3,7 @@ package com.riozenc.task.webapp.dao;
 import com.riozenc.task.webapp.entity.SmsBackup;
 import com.riozenc.titanTool.annotation.TransactionDAO;
 import com.riozenc.titanTool.spring.webapp.dao.AbstractTransactionDAOSupport;
+import org.apache.ibatis.session.ExecutorType;
 
 import java.util.List;
 
@@ -15,8 +16,8 @@ public class SmsBackupDao extends AbstractTransactionDAOSupport {
     }
 
     public int insertList(List<SmsBackup> smsBackups) {
-        return getPersistanceManager().insert(getNamespace() +
-                ".insertList", smsBackups);
+        return getPersistanceManager(ExecutorType.BATCH).insertList(getNamespace() +
+                ".insert", smsBackups);
     }
 
     public List<SmsBackup> findByWhere(SmsBackup smsBackup) {

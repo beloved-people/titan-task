@@ -57,38 +57,55 @@ public class SmsServiceImpl implements ISmsService {
         SmsContentInfo smsContentInfo = new SmsContentInfo();
         smsContentInfo.setSmsTitle(smsTitle);
         List<SmsContentInfo> smsContentInfos = smsDAO.findByWhere(smsContentInfo);
+        if (smsContentInfos == null || smsContentInfos.size() < 1) {
+            throw new RuntimeException("数据库没有短信模板信息表," +
+                    "请检查相关配置表 SMS_CONTENT_INFO");
+        }
         String smsContentTemplate = smsContentInfos.get(0).getSmsContentTemplate();
+
         //2. 根据当前月份、已欠费、未发送查询欠费信息
         String mon = MonUtils.getMon();
         ArrearageDomain arrearageDomain = new ArrearageDomain();
         arrearageDomain.setMon(Integer.parseInt(mon));
         arrearageDomain.setIsSettle(0);
         arrearageDomain.setIsSend(false);
-        Map<Long, List<ArrearageDomain>> arrearageDomainsCollect =
-                findArrearageDomainsByIsSettleMonAndIsSendGroupingBySettlementId(arrearageDomain);
+        Map<Long, List<ArrearageDomain>> arrearageDomainsCollect = findByIsSettleMonAndIsSend(arrearageDomain);
+
         if (arrearageDomainsCollect.size() == 0) {
             //TODO 日志
-            return;
+            throw new RuntimeException("发送时间:" + new Date() + "," +
+                    "cronScheduleExpression1 任务无要发送的短信");
         }
+
         //3. 生成短信、备份信息
         List<Message> messages = new ArrayList<>();
         List<TextMessageDto> textMessages = new ArrayList<>();
         List<SmsBackup> smsBackups = new ArrayList<>();
         List<SmsBackup> irregularPhoneSmsBackups = new ArrayList<>();
+
+        //按结算户遍历处理数据 汇总数据
         for (Map.Entry<Long, List<ArrearageDomain>> arrearageDomainKey : arrearageDomainsCollect.entrySet()) {
+
             Long key = arrearageDomainKey.getKey();
             List<ArrearageDomain> entryArrearageDomainList = arrearageDomainKey.getValue();
+            //欠费
             BigDecimal totalOweMoney = entryArrearageDomainList.stream().filter(e -> e.getOweMoney() != null)
                     .map(ArrearageDomain::getOweMoney)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+            //电费
             BigDecimal totalReceivable = entryArrearageDomainList.stream().filter(e -> e.getReceivable() != null)
                     .map(ArrearageDomain::getReceivable)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+            //电量
             BigDecimal totalPower = entryArrearageDomainList.stream().filter(e -> e.getTotalPower() != null)
                     .map(ArrearageDomain::getTotalPower)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            //发行时间
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String createDate = sdf.format(entryArrearageDomainList.get(0).getCreateDate());
+
+            //短信信息
             Object[] placeholders = new Object[]{entryArrearageDomainList.get(0).getSettlementName(),
                     entryArrearageDomainList.get(0).getSettlementNo(),
                     entryArrearageDomainList.get(0).getMon().toString().substring(0, 4),
@@ -99,6 +116,8 @@ public class SmsServiceImpl implements ISmsService {
                     createDate.substring(0, 4), createDate.substring(5, 7),
                     createDate.substring(8, 10), createDate.substring(11, 13)};
             String msg = MessageFormat.format(smsContentTemplate, placeholders);
+
+            //备份
             SmsBackup smsBackup = new SmsBackup();
             smsBackup.setSettlementId(key);
             smsBackup.setContent(msg);
@@ -106,6 +125,7 @@ public class SmsServiceImpl implements ISmsService {
             smsBackup.setMon(Integer.parseInt(mon));
             smsBackup.setIsSend(false);
             smsBackup.setSuccess(false);
+
             if (entryArrearageDomainList.get(0).getSettlementPhone() != null
                     && RegexValidateUtil.checkMobileNumber(entryArrearageDomainList.get(0).getSettlementPhone())) {
                 smsBackup.setMobile(entryArrearageDomainList.get(0).getSettlementPhone());
@@ -129,9 +149,13 @@ public class SmsServiceImpl implements ISmsService {
         }
         // 4.对号码不正确的信息进行备份
         this.smsBackupService.batchBackup(irregularPhoneSmsBackups);
+
         // 5.按照电话号码对短信对象集合分组
-        Map<String, List<Message>> messagesCollect = messages.stream().collect(Collectors.groupingBy(Message::getMobile));
+        Map<String, List<Message>> messagesCollect =
+                messages.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(Message::getMobile));
+        //多个结算户 同一个电话号
         List<Message> duplicateMessages = new ArrayList<>();
+        //一个计算户 一个电话号
         List<Message> uniqueMessages = new ArrayList<>();
         for (Map.Entry<String, List<Message>> messageKey : messagesCollect.entrySet()) {
             List<Message> messagesGroup = messageKey.getValue();
@@ -142,7 +166,7 @@ public class SmsServiceImpl implements ISmsService {
             }
         }
         // 6.按照电话号码对短信备份对象集合分组
-        Map<String, List<SmsBackup>> smsBackupCollect = smsBackups.stream().collect(Collectors.groupingBy(SmsBackup::getMobile));
+        Map<String, List<SmsBackup>> smsBackupCollect = smsBackups.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(SmsBackup::getMobile));
         List<SmsBackup> duplicateSmsBackups = new ArrayList<>();
         List<SmsBackup> uniqueSmsBackups = new ArrayList<>();
         for (Map.Entry<String, List<SmsBackup>> smsBackupKey : smsBackupCollect.entrySet()) {
@@ -153,8 +177,9 @@ public class SmsServiceImpl implements ISmsService {
                 uniqueSmsBackups.addAll(smsBackupGroup);
             }
         }
+
         // 7.按照电话号码对短信传输对象集合分组
-        Map<String, List<TextMessageDto>> textMessageDTOCollect = textMessages.stream().collect(Collectors.groupingBy(TextMessageDto::getMobile));
+        Map<String, List<TextMessageDto>> textMessageDTOCollect = textMessages.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(TextMessageDto::getMobile));
         List<TextMessageDto> duplicateTextMessageDTOs = new ArrayList<>();
         List<TextMessageDto> uniqueTextMessageDTOs = new ArrayList<>();
         for (Map.Entry<String, List<TextMessageDto>> textMessageDTOKey : textMessageDTOCollect.entrySet()) {
@@ -165,6 +190,7 @@ public class SmsServiceImpl implements ISmsService {
                 uniqueTextMessageDTOs.addAll(textMessageDtoGroup);
             }
         }
+
         // 8.对不重复电话号码的短信进行先备份再发送后修改
         if (uniqueMessages.size() != 0) {
             // 批量备份不重复号码的短信
@@ -172,19 +198,24 @@ public class SmsServiceImpl implements ISmsService {
             // 每隔2000条进行发送
             int messagesSize = uniqueMessages.size();
             for (int m = 0; m < messagesSize / 1999 + 1; m++) {
+
                 List<Message> newMessagesList = uniqueMessages.subList(m * 1999,
                         (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
+
                 // 发送短信接口
                 boolean sendSuccess = SendMessagesUtil.isSendSuccess(newMessagesList);
+
                 // 欠费表中IS_SEND=1（表示短信已经发送）
                 List<TextMessageDto> newList = uniqueTextMessageDTOs.subList(m * 1999,
                         (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
+
                 List<Long> settlementIds =
                         newList.stream().filter(t -> t.getSettlementId() != null)
                                 .map(TextMessageDto::getSettlementId).distinct()
                                 .collect(Collectors.toList());
+
                 if (settlementIds.size() == 0) {
-                    return;
+                    continue;
                 }
                 ArrearageDomain arrearage = new ArrearageDomain();
                 arrearage.setMon(Integer.parseInt(mon));
@@ -200,6 +231,8 @@ public class SmsServiceImpl implements ISmsService {
         }
         // 9.对重复电话号码的短信进行先备份再发送后修改
         if (duplicateMessages.size() != 0) {
+            List<Long> successSettIds = new ArrayList<>();
+            List<Long> errorSettIds = new ArrayList<>();
             this.smsBackupService.batchBackup(duplicateSmsBackups);
             // 单条发送
             int messagesSize = duplicateMessages.size();
@@ -213,18 +246,36 @@ public class SmsServiceImpl implements ISmsService {
                         .map(TextMessageDto::getSettlementId).distinct()
                         .collect(Collectors.toList());
                 if (settlementIds.size() == 0) {
-                    return;
+                    continue;
                 }
-                ArrearageDomain arrearage = new ArrearageDomain();
-                arrearage.setMon(Integer.parseInt(mon));
-                arrearage.setSettlementIds(settlementIds);
-                updateSendBySettlementIdsAndMon(arrearage);
-                SmsBackup smsBackup = new SmsBackup();
-                smsBackup.setSuccess(sendSuccess);
-                smsBackup.setSettlementIds(settlementIds);
-                smsBackup.setContentTitle(smsTitle);
-                this.smsBackupService.updateBackup(smsBackup);
+
+                if(sendSuccess==true){
+                    successSettIds.addAll(settlementIds);
+                }else{
+                    errorSettIds.addAll(settlementIds);
+                }
             }
+            //批量更新数据
+            ArrearageDomain arrearage = new ArrearageDomain();
+            arrearage.setMon(Integer.parseInt(mon));
+            arrearage.setSettlementIds(successSettIds);
+            updateSendBySettlementIdsAndMon(arrearage);
+
+
+            SmsBackup successSmsBackup = new SmsBackup();
+            successSmsBackup.setSuccess(true);
+            successSmsBackup.setMon(Integer.parseInt(mon));
+            successSmsBackup.setSettlementIds(successSettIds);
+            successSmsBackup.setContentTitle(smsTitle);
+            this.smsBackupService.updateBackup(successSmsBackup);
+
+
+            SmsBackup errorSmsBackup = new SmsBackup();
+            errorSmsBackup.setSuccess(false);
+            errorSmsBackup.setMon(Integer.parseInt(mon));
+            errorSmsBackup.setSettlementIds(errorSettIds);
+            errorSmsBackup.setContentTitle(smsTitle);
+            this.smsBackupService.updateBackup(errorSmsBackup);
         }
     }
 
@@ -240,18 +291,21 @@ public class SmsServiceImpl implements ISmsService {
         smsBackup.setMon(Integer.parseInt(mon));
         smsBackup.setIsSend(false);
         smsBackup.setSuccess(false);
-        if (day == 26) {
+        if (day == 27) {
             smsBackup.setContentTitle("电费信息（发行）");
         }
-        if (day == 7 || day == 14) {
+        if (day == 8 || day == 15) {
             smsBackup.setContentTitle("欠费短信（违约金起算日期前）");
         }
         List<SmsBackup> smsBackups = smsBackupDao.findByWhere(smsBackup);
+
         if (smsBackups.size() != 0) {
             List<TextMessageDto> textMessages = new ArrayList<>();
             List<Message> messages = new ArrayList<>();
-            smsBackups.stream().filter(s -> s.getSettlementId() != null && s.getMobile() != null
-                    && RegexValidateUtil.checkMobileNumber(s.getMobile())).forEach(s -> {
+            //过滤手机号不正确的
+            smsBackups= smsBackups.stream().filter(s -> s.getSettlementId() != null && s.getMobile() != null
+                    && RegexValidateUtil.checkMobileNumber(s.getMobile())).collect(Collectors.toList());
+            smsBackups.stream().forEach(s -> {
                 TextMessageDto textMessageDto = new TextMessageDto();
                 textMessageDto.setSettlementId(s.getSettlementId());
                 textMessageDto.setContent(s.getContent());
@@ -262,30 +316,131 @@ public class SmsServiceImpl implements ISmsService {
                 messages.add(message);
                 textMessages.add(textMessageDto);
             });
-            int messagesSize = messages.size();
-            for (int m = 0; m < messagesSize / 1999 + 1; m++) {
-                List<Message> newMessagesList = messages.subList(m * 1999,
-                        (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
-                boolean sendSuccess = SendMessagesUtil.isSendSuccess(newMessagesList);
-                List<TextMessageDto> newTextMessages = textMessages.subList(m * 1999,
-                        (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
-                if (sendSuccess) {
+
+            // 5.按照电话号码对短信对象集合分组
+            Map<String, List<Message>> messagesCollect =
+                    messages.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(Message::getMobile));
+            //多个结算户 同一个电话号
+            List<Message> duplicateMessages = new ArrayList<>();
+            //一个计算户 一个电话号
+            List<Message> uniqueMessages = new ArrayList<>();
+            for (Map.Entry<String, List<Message>> messageKey : messagesCollect.entrySet()) {
+                List<Message> messagesGroup = messageKey.getValue();
+                if (messagesGroup.size() > 1) {
+                    duplicateMessages.addAll(messagesGroup);
+                } else {
+                    uniqueMessages.addAll(messagesGroup);
+                }
+            }
+            // 6.按照电话号码对短信备份对象集合分组
+            Map<String, List<SmsBackup>> smsBackupCollect = smsBackups.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(SmsBackup::getMobile));
+            List<SmsBackup> duplicateSmsBackups = new ArrayList<>();
+            List<SmsBackup> uniqueSmsBackups = new ArrayList<>();
+            for (Map.Entry<String, List<SmsBackup>> smsBackupKey : smsBackupCollect.entrySet()) {
+                List<SmsBackup> smsBackupGroup = smsBackupKey.getValue();
+                if (smsBackupGroup.size() > 1) {
+                    duplicateSmsBackups.addAll(smsBackupGroup);
+                } else {
+                    uniqueSmsBackups.addAll(smsBackupGroup);
+                }
+            }
+
+            // 7.按照电话号码对短信传输对象集合分组
+            Map<String, List<TextMessageDto>> textMessageDTOCollect = textMessages.stream().filter(t -> t.getMobile() != null).collect(Collectors.groupingBy(TextMessageDto::getMobile));
+            List<TextMessageDto> duplicateTextMessageDTOs = new ArrayList<>();
+            List<TextMessageDto> uniqueTextMessageDTOs = new ArrayList<>();
+            for (Map.Entry<String, List<TextMessageDto>> textMessageDTOKey : textMessageDTOCollect.entrySet()) {
+                List<TextMessageDto> textMessageDtoGroup = textMessageDTOKey.getValue();
+                if (textMessageDtoGroup.size() > 1) {
+                    duplicateTextMessageDTOs.addAll(textMessageDtoGroup);
+                } else {
+                    uniqueTextMessageDTOs.addAll(textMessageDtoGroup);
+                }
+            }
+
+
+
+            if (uniqueMessages.size() != 0) {
+                // 每隔2000条进行发送
+                int messagesSize = uniqueMessages.size();
+                for (int m = 0; m < messagesSize / 1999 + 1; m++) {
+
+                    List<Message> newMessagesList = uniqueMessages.subList(m * 1999,
+                            (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
+
+                    // 发送短信接口
+                    boolean sendSuccess = SendMessagesUtil.isSendSuccess(newMessagesList);
+
+                    // 欠费表中IS_SEND=1（表示短信已经发送）
+                    List<TextMessageDto> newList = uniqueTextMessageDTOs.subList(m * 1999,
+                            (m + 1) * 1999 > messagesSize ? messagesSize : (m + 1) * 1999);
+
                     List<Long> settlementIds =
-                            newTextMessages.stream().filter(t -> t.getSettlementId() != null)
+                            newList.stream().filter(t -> t.getSettlementId() != null)
                                     .map(TextMessageDto::getSettlementId).distinct()
                                     .collect(Collectors.toList());
+
                     if (settlementIds.size() == 0) {
-                        return;
+                        continue;
                     }
-                    SmsBackup smsBackup1 = new SmsBackup();
-                    smsBackup1.setSettlementIds(settlementIds);
-                    smsBackup1.setSuccess(true);
-                    smsBackup1.setIsSend(true);
-                    smsBackup1.setContentTitle(textMessages.get(0).getContentTitle());
-                    smsBackup1.setReason("发送成功！");
-                    smsBackup1.setMon(Integer.parseInt(mon));
-                    this.smsBackupService.update(smsBackup1);
+                    ArrearageDomain arrearage = new ArrearageDomain();
+                    arrearage.setMon(Integer.parseInt(mon));
+                    arrearage.setSettlementIds(settlementIds);
+                    updateSendBySettlementIdsAndMon(arrearage);
+                    // 对备份库中短信的字段进行修改
+                    SmsBackup paramSmsBackup = new SmsBackup();
+                    paramSmsBackup.setSuccess(sendSuccess);
+                    paramSmsBackup.setSettlementIds(settlementIds);
+                    paramSmsBackup.setContentTitle(smsBackup.getContentTitle());
+                    this.smsBackupService.updateBackup(paramSmsBackup);
                 }
+            }
+            // 9.对重复电话号码的短信进行先备份再发送后修改
+            if (duplicateMessages.size() != 0) {
+                List<Long> successSettIds = new ArrayList<>();
+                List<Long> errorSettIds = new ArrayList<>();
+                // 单条发送
+                int messagesSize = duplicateMessages.size();
+                for (int i = 0; i < messagesSize; i++) {
+                    List<Message> newMessagesList = new ArrayList<>();
+                    newMessagesList.add(duplicateMessages.get(i));
+                    boolean sendSuccess = SendMessagesUtil.isSendSuccess(newMessagesList);
+                    List<TextMessageDto> newTextMessageDtoList = new ArrayList<>();
+                    newTextMessageDtoList.add(duplicateTextMessageDTOs.get(i));
+                    List<Long> settlementIds = newTextMessageDtoList.stream().filter(t -> t.getSettlementId() != null)
+                            .map(TextMessageDto::getSettlementId).distinct()
+                            .collect(Collectors.toList());
+                    if (settlementIds.size() == 0) {
+                        continue;
+                    }
+
+                    if(sendSuccess==true){
+                        successSettIds.addAll(settlementIds);
+                    }else{
+                        errorSettIds.addAll(settlementIds);
+                    }
+                }
+                //批量更新数据
+                ArrearageDomain arrearage = new ArrearageDomain();
+                arrearage.setMon(Integer.parseInt(mon));
+                arrearage.setSettlementIds(successSettIds);
+                updateSendBySettlementIdsAndMon(arrearage);
+
+
+                SmsBackup successSmsBackup = new SmsBackup();
+                successSmsBackup.setSuccess(true);
+                successSmsBackup.setMon(Integer.parseInt(mon));
+                successSmsBackup.setSettlementIds(successSettIds);
+                successSmsBackup.setContentTitle(smsBackup.getContentTitle());
+                this.smsBackupService.updateBackup(successSmsBackup);
+
+
+                SmsBackup errorSmsBackup = new SmsBackup();
+                errorSmsBackup.setSuccess(false);
+                errorSmsBackup.setMon(Integer.parseInt(mon));
+                errorSmsBackup.setSettlementIds(errorSettIds);
+                errorSmsBackup.setContentTitle(smsBackup.getContentTitle());
+                this.smsBackupService.updateBackup(errorSmsBackup);
             }
         }
 
@@ -301,6 +456,10 @@ public class SmsServiceImpl implements ISmsService {
         SmsContentInfo smsContentInfo = new SmsContentInfo();
         smsContentInfo.setSmsTitle(smsTitle);
         List<SmsContentInfo> smsContentInfos = smsDAO.findByWhere(smsContentInfo);
+        if (smsContentInfos == null || smsContentInfos.size() < 1) {
+            throw new RuntimeException("数据库没有短信模板信息表," +
+                    "请检查相关配置表 SMS_CONTENT_INFO");
+        }
         String smsContentTemplate = smsContentInfos.get(0).getSmsContentTemplate();
         ArrearageDomain arrearageDomain = new ArrearageDomain();
         String mon = MonUtils.getMon();
@@ -309,7 +468,7 @@ public class SmsServiceImpl implements ISmsService {
         arrearageDomain.setIsSettle(0);
         arrearageDomain.setIsSend(true);
         Map<Long, List<ArrearageDomain>> arrearageDomainsCollect =
-                findArrearageDomainsByIsSettleMonAndIsSendGroupingBySettlementId(arrearageDomain);
+                findByIsSettleMonAndIsSend(arrearageDomain);
         List<Message> messages = new ArrayList<>();
         List<TextMessageDto> textMessages = new ArrayList<>();
         List<SmsBackup> smsBackups = new ArrayList<>();
@@ -406,7 +565,7 @@ public class SmsServiceImpl implements ISmsService {
                                 .map(TextMessageDto::getSettlementId).distinct()
                                 .collect(Collectors.toList());
                 if (settlementIds.size() == 0) {
-                    return;
+                    continue;
                 }
                 SmsBackup smsBackup = new SmsBackup();
                 smsBackup.setSuccess(sendSuccess);
@@ -415,6 +574,7 @@ public class SmsServiceImpl implements ISmsService {
                 this.smsBackupService.updateBackup(smsBackup);
             }
         }
+
         if (duplicateMessages.size() != 0) {
             this.smsBackupService.batchBackup(duplicateSmsBackups);
             int messagesSize = duplicateMessages.size();
@@ -428,7 +588,7 @@ public class SmsServiceImpl implements ISmsService {
                         .map(TextMessageDto::getSettlementId).distinct()
                         .collect(Collectors.toList());
                 if (settlementIds.size() == 0) {
-                    return;
+                    continue;
                 }
                 SmsBackup smsBackup = new SmsBackup();
                 smsBackup.setSuccess(sendSuccess);
@@ -447,12 +607,12 @@ public class SmsServiceImpl implements ISmsService {
 
 
     /**
-     * 欠费查询，并按照结算户号分组
+     * 欠费查询，并按照结算户id分组
      *
      * @param arrearageDomain 查询欠费的条件
      * @return 欠费信息
      */
-    public Map<Long, List<ArrearageDomain>> findArrearageDomainsByIsSettleMonAndIsSendGroupingBySettlementId(
+    public Map<Long, List<ArrearageDomain>> findByIsSettleMonAndIsSend(
             ArrearageDomain arrearageDomain) {
         List<ArrearageDomain> arrearageDomains = new ArrayList<>();
         Map<String, Object> params = new HashMap<>();
@@ -466,9 +626,11 @@ public class SmsServiceImpl implements ISmsService {
             e.printStackTrace();
             return Collections.emptyMap();
         }
-        return arrearageDomains.stream()
-                .filter(a -> a.getSettlementId() != null)
-                .collect(Collectors.groupingBy(ArrearageDomain::getSettlementId));
+
+        Map<Long, List<ArrearageDomain>> arrearageMapBySettId =
+                arrearageDomains.stream().filter(a -> a.getSettlementId() != null).collect(Collectors.groupingBy(ArrearageDomain::getSettlementId));
+
+        return arrearageMapBySettId;
     }
 
     /**

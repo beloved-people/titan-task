@@ -49,7 +49,7 @@ public class CommonScheduler {
 
     /**
      * 电费发行短信服务
-     * 每个月26日上午8点执行一次
+     * 每个月26日下午5点执行一次
      *
      * @param scheduler
      */
@@ -57,8 +57,10 @@ public class CommonScheduler {
         JobDetail jobDetail = JobBuilder.newJob(SendMessagesJob.class)
                 .withIdentity("sendMessages" + System.currentTimeMillis(),
                         "sendMessagesOfElectricityBillInfo").build();
+
         CronScheduleBuilder cronScheduleBuilder = CronScheduleBuilder
                 .cronSchedule(Global.getConfig("cronScheduleExpression1"));
+
         CronTrigger cronTrigger = TriggerBuilder.newTrigger()
                 .withIdentity("sendMessagesTrigger" + System.currentTimeMillis(),
                         "sendMessagesTriggerGroup" + System.currentTimeMillis())

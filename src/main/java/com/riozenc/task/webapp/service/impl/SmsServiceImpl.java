@@ -249,17 +249,22 @@ public class SmsServiceImpl implements ISmsService {
                     continue;
                 }
 
-                if(sendSuccess==true){
+                if (sendSuccess == true) {
                     successSettIds.addAll(settlementIds);
-                }else{
+                } else {
                     errorSettIds.addAll(settlementIds);
                 }
             }
             //批量更新数据
-            ArrearageDomain arrearage = new ArrearageDomain();
-            arrearage.setMon(Integer.parseInt(mon));
-            arrearage.setSettlementIds(successSettIds);
-            updateSendBySettlementIdsAndMon(arrearage);
+            int successSettIdssize = successSettIds.size();
+            for (int m = 0; m < successSettIdssize / 19999 + 1; m++) {
+                List<Long> batchSuccessSettIds = successSettIds.subList(m * 19999,
+                        (m + 1) * 19999 > successSettIdssize ? successSettIdssize : (m + 1) * 19999);
+                ArrearageDomain arrearage = new ArrearageDomain();
+                arrearage.setMon(Integer.parseInt(mon));
+                arrearage.setSettlementIds(batchSuccessSettIds);
+                updateSendBySettlementIdsAndMon(arrearage);
+            }
 
 
             SmsBackup successSmsBackup = new SmsBackup();
@@ -303,7 +308,7 @@ public class SmsServiceImpl implements ISmsService {
             List<TextMessageDto> textMessages = new ArrayList<>();
             List<Message> messages = new ArrayList<>();
             //过滤手机号不正确的
-            smsBackups= smsBackups.stream().filter(s -> s.getSettlementId() != null && s.getMobile() != null
+            smsBackups = smsBackups.stream().filter(s -> s.getSettlementId() != null && s.getMobile() != null
                     && RegexValidateUtil.checkMobileNumber(s.getMobile())).collect(Collectors.toList());
             smsBackups.stream().forEach(s -> {
                 TextMessageDto textMessageDto = new TextMessageDto();
@@ -357,7 +362,6 @@ public class SmsServiceImpl implements ISmsService {
                     uniqueTextMessageDTOs.addAll(textMessageDtoGroup);
                 }
             }
-
 
 
             if (uniqueMessages.size() != 0) {
@@ -414,17 +418,22 @@ public class SmsServiceImpl implements ISmsService {
                         continue;
                     }
 
-                    if(sendSuccess==true){
+                    if (sendSuccess == true) {
                         successSettIds.addAll(settlementIds);
-                    }else{
+                    } else {
                         errorSettIds.addAll(settlementIds);
                     }
                 }
                 //批量更新数据
-                ArrearageDomain arrearage = new ArrearageDomain();
-                arrearage.setMon(Integer.parseInt(mon));
-                arrearage.setSettlementIds(successSettIds);
-                updateSendBySettlementIdsAndMon(arrearage);
+                int successSettIdssize = successSettIds.size();
+                for (int m = 0; m < successSettIdssize / 19999 + 1; m++) {
+                    List<Long> batchSuccessSettIds = successSettIds.subList(m * 19999,
+                            (m + 1) * 19999 > successSettIdssize ? successSettIdssize : (m + 1) * 19999);
+                    ArrearageDomain arrearage = new ArrearageDomain();
+                    arrearage.setMon(Integer.parseInt(mon));
+                    arrearage.setSettlementIds(batchSuccessSettIds);
+                    updateSendBySettlementIdsAndMon(arrearage);
+                }
 
 
                 SmsBackup successSmsBackup = new SmsBackup();

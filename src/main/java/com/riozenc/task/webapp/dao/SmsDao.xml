@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.riozenc.task.webapp.dao.SmsDao">
+    <select id="findByWhere" parameterType="SmsContentInfo" resultType="SmsContentInfo" useCache="true">
+        select SMS_ID, SMS_REMARK, SMS_CONTENT_TEMPLATE, SMS_TITLE
+        from SMS_CONTENT_INFO
+        <where>
+            <if test="smsTitle != null">
+                and SMS_TITLE = #{smsTitle}
+            </if>
+        </where>
+    </select>
+</mapper>

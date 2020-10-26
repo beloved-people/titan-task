@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.riozenc.task.webapp.dao.SmsBackupDao">
+    <insert id="insert" parameterType="SmsBackup" flushCache="true">
+        INSERT INTO SMS_BACKUP(ID, SETTLEMENT_ID, CONTENT_TITLE, CONTENT, MOBILE, IS_SEND, MON, IS_SUCCESS, REASON)
+        VALUES (#{id}, #{settlementId}, #{contentTitle}, #{content}, #{mobile}, #{isSend}, #{mon}, #{success},
+                #{reason})
+    </insert>
+
+    <insert id="insertList" parameterType="java.util.List" flushCache="true" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO SMS_BACKUP(SETTLEMENT_ID, CONTENT_TITLE, CONTENT, MOBILE, IS_SEND, MON, IS_SUCCESS, REASON)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.settlementId}, #{item.contentTitle}, #{item.content}, #{item.mobile}, #{item.isSend},
+            #{item.mon}, #{item.success}, #{item.reason})
+        </foreach>
+    </insert>
+
+    <!--查询所有未发送的短信-->
+    <select id="findByWhere" parameterType="SmsBackup" resultType="SmsBackup" useCache="true">
+        select ID, IS_SEND, MOBILE, CONTENT_TITLE, CONTENT, SETTLEMENT_ID, MON, IS_SUCCESS, REASON
+        from SMS_BACKUP
+        <where>
+            <if test="isSend != null">
+                and IS_SEND = #{isSend}
+            </if>
+            <if test="mon != null">
+                and MON = #{mon}
+            </if>
+            <if test="success != null">
+                and IS_SUCCESS = #{success}
+            </if>
+            <if test="contentTitle != null">
+                and CONTENT_TITLE = #{contentTitle}
+            </if>
+            <if test="reason != null">
+                and REASON = #{reason}
+            </if>
+        </where>
+    </select>
+
+    <delete id="delete"
+            parameterType="SmsBackup"
+            flushCache="true">
+        delete from SMS_BACKUP
+        <where>
+            <if test="settlementIds != null or settlementIds.size != 0">
+                SETTLEMENT_ID IN
+                <foreach item="item" index="index" collection="settlementIds" open="("
+                         separator="," close=")">${item}
+                </foreach>
+            </if>
+            <if test="settlementIds == null or settlementIds.size == 0">and 1=2</if>
+        </where>
+    </delete>
+
+    <update id="update" parameterType="SmsBackup"
+            flushCache="true">
+        update SMS_BACKUP
+        <set>
+            IS_SEND = #{isSend}, IS_SUCCESS = #{success}, REASON = #{reason}
+        </set>
+        <where>
+            <if test="settlementIds != null and settlementIds.size > 0">
+                and SETTLEMENT_ID in
+                <foreach item="item" index="index" collection="settlementIds" open="("
+                         separator="," close=")">#{item}
+                </foreach>
+            </if>
+            <if test="settlementIds == null or settlementIds.size == 0">and 1=2</if>
+            <if test="contentTitle != null">
+                and CONTENT_TITLE = #{contentTitle}
+            </if>
+            <if test="mon != null">
+                and MON = #{mon}
+            </if>
+        </where>
+    </update>
+</mapper>

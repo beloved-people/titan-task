@@ -11,7 +11,7 @@ public class MeterMoneyPenaltyConfigEntity {
     private String name;
     private Date startTime;
     private Date endTime;
-    private Date time;
+    private java.util.Date time;
     private Integer days;
     private Date createDate;
     private String remark;
@@ -57,11 +57,11 @@ public class MeterMoneyPenaltyConfigEntity {
         this.endTime = endTime;
     }
 
-    public Date getTime() {
+    public java.util.Date getTime() {
         return time;
     }
 
-    public void setTime(Date time) {
+    public void setTime(java.util.Date time) {
         this.time = time;
     }
 

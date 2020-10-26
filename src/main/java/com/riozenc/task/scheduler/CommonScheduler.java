@@ -14,10 +14,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 
+import java.util.*;
 import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author belov
@@ -134,13 +132,13 @@ public class CommonScheduler {
         System.out.println("长度"+meterMoneyPenaltyConfigsSize);
         if (meterMoneyPenaltyConfigsSize <= 0) {
             JobDetail jobDetail = JobBuilder.newJob(PunishMoneySchedulerJob.class)
-                    .withIdentity("sendArrearageMessages" + System.currentTimeMillis(),
-                            "sendArrearageMessages").build();
+                    .withIdentity("meterMoneyPenalty" + System.currentTimeMillis(),
+                            "meterMoneyPenalty").build();
             CronScheduleBuilder cronScheduleBuilder = CronScheduleBuilder
                     .cronSchedule(Global.getConfig("cronScheduleExpression4"));
             CronTrigger cronTrigger = TriggerBuilder.newTrigger()
-                    .withIdentity("sendArrearageMessagesTrigger" + System.currentTimeMillis(),
-                            "sendArrearageMessagesTriggerGroup" + System.currentTimeMillis())
+                    .withIdentity("meterMoneyPenaltyTrigger" + System.currentTimeMillis(),
+                            "meterMoneyPenaltyTriggerGroup" + System.currentTimeMillis())
                     .withSchedule(cronScheduleBuilder).build();
             try {
                 scheduler.scheduleJob(jobDetail, cronTrigger);
@@ -152,11 +150,13 @@ public class CommonScheduler {
 
     public Integer findMeterMoneyPenaltyConfigsSize() {
         java.util.Calendar calendar = java.util.Calendar.getInstance();
-        java.sql.Date dateTime = new java.sql.Date(System.currentTimeMillis());
+        /*java.sql.Date dateTime = new java.sql.Date(System.currentTimeMillis());*/
+        Date date=new Date();
         Integer year = Integer.parseInt(String.valueOf(calendar.get(Calendar.YEAR)));
         MeterMoneyPenaltyConfigEntity meterMoneyPenaltyConfigEntity = new MeterMoneyPenaltyConfigEntity();
         meterMoneyPenaltyConfigEntity.setYear(year);
-        meterMoneyPenaltyConfigEntity.setTime(dateTime);
+        meterMoneyPenaltyConfigEntity.setTime(date);
+        System.out.println("dateTime====="+date);
         List<MeterMoneyPenaltyConfigEntity> meterMoneyPenaltyConfigList;
         Map<String, Object> params = new HashMap<>();
         params.put("meterMoneyPenaltyConfig", meterMoneyPenaltyConfigEntity);

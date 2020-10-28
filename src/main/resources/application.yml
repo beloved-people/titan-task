@@ -12,7 +12,7 @@ eureka:
     serviceUrl:
       defaultZone: http://titan:df6100@172.20.100.29:7777/eureka/
     #defaultZone: http://172.20.100.28:7777/eureka/
-#          defaultZone: http://guidong:df6100@172.21.29.55:7777/guidong/eureka/
+      #defaultZone: http://guidong:df6100@172.21.29.55:7777/guidong/eureka/
     #defaultZone: http://47.92.88.159:7777/eureka/
 logging:
   level:

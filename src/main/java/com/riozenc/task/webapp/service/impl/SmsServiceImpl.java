@@ -672,7 +672,7 @@ public class SmsServiceImpl implements ISmsService {
         try {
             this.titanTemplate.postJson("BILLING-SERVER",
                     "billingServer/moneyPenalty/generatePenaltyDataTask", new HttpHeaders(), null,
-                    new TypeReference<Integer>() {
+                    new TypeReference<Object>() {
                     });
         } catch (Exception e) {
             e.printStackTrace();

@@ -128,9 +128,9 @@ public class CommonScheduler {
         // 获取当前时间
         // 与数据库中的设置的时间进行匹配
         // 有则执行，无则结束
-        Integer meterMoneyPenaltyConfigsSize = findMeterMoneyPenaltyConfigsSize();
+        /*Integer meterMoneyPenaltyConfigsSize = findMeterMoneyPenaltyConfigsSize();
         System.out.println("长度"+meterMoneyPenaltyConfigsSize);
-        if (meterMoneyPenaltyConfigsSize <= 0) {
+        if (meterMoneyPenaltyConfigsSize <= 0) {*/
             JobDetail jobDetail = JobBuilder.newJob(PunishMoneySchedulerJob.class)
                     .withIdentity("meterMoneyPenalty" + System.currentTimeMillis(),
                             "meterMoneyPenalty").build();
@@ -145,7 +145,7 @@ public class CommonScheduler {
             } catch (SchedulerException e) {
                 e.printStackTrace();
             }
-        }
+        /*}*/
     }
 
     public Integer findMeterMoneyPenaltyConfigsSize() {

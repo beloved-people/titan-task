@@ -136,6 +136,24 @@
             <version>20200518</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.epoint.sso</groupId>
+            <artifactId>epoint-ipaas-sdk</artifactId>
+            <version>9.3.2-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+            <version>1.9.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.isoftstone</groupId>
+            <artifactId>sign</artifactId>
+            <version>1.4</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/sign_v1.4.jar</systemPath>
+        </dependency>
     </dependencies>
 
 
@@ -145,6 +163,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>2.0.3.RELEASE</version>
+                <configuration>
+                    <includeSystemScope>true</includeSystemScope>
+                </configuration>
             </plugin>
 
             <plugin>

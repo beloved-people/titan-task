@@ -1,19 +1,17 @@
 server:
-  port: 10100
+  port: 6159
   servlet:
     context-path: /taskServer
 spring:
   application:
-    name: TASK-SERVER
+    name: FMS-SERVER
 eureka:
   instance:
     prefer-ip-address: true
   client:
     serviceUrl:
-      defaultZone: http://titan:df6100@172.20.100.29:7777/eureka/
-    #defaultZone: http://172.20.100.28:7777/eureka/
-      #defaultZone: http://guidong:df6100@172.21.29.55:7777/guidong/eureka/
-    #defaultZone: http://47.92.88.159:7777/eureka/
+      defaultZone: http://titan:df6100@10.39.68.27:6150/eureka/
+#      defaultZone: http://titan:df6100@172.20.100.29:7777/eureka/
 logging:
   level:
     com.riozenc.task: debug

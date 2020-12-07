@@ -1,26 +1,26 @@
-package com.riozenc.task.webapp.domain;
-
-/**
- * @author belov
- */
-public class DigitalSignatureDomain {
-
-    private String SFZMHM; // 身份证号码
-    private String ZLHTBAH; // 备案号
-
-    public String getSFZMHM() {
-        return SFZMHM;
-    }
-
-    public void setSFZMHM(String SFZMHM) {
-        this.SFZMHM = SFZMHM;
-    }
-
-    public String getZLHTBAH() {
-        return ZLHTBAH;
-    }
-
-    public void setZLHTBAH(String ZLHTBAH) {
-        this.ZLHTBAH = ZLHTBAH;
-    }
-}
+//package com.riozenc.task.webapp.domain;
+//
+///**
+// * @author belov
+// */
+//public class DigitalSignatureDomain {
+//
+//    private String ZLHTBAH; // 租赁合同备案号
+//    private String ZKSFZH; // 租客身份证号
+//
+//    public String getZLHTBAH() {
+//        return ZLHTBAH;
+//    }
+//
+//    public void setZLHTBAH(String ZLHTBAH) {
+//        this.ZLHTBAH = ZLHTBAH;
+//    }
+//
+//    public String getZKSFZH() {
+//        return ZKSFZH;
+//    }
+//
+//    public void setZKSFZH(String ZKSFZH) {
+//        this.ZKSFZH = ZKSFZH;
+//    }
+//}

@@ -4,7 +4,7 @@ server:
     context-path: /taskServer
 spring:
   application:
-    name: FMS-SERVER
+    name: TASK-SERVER
 eureka:
   instance:
     prefer-ip-address: true

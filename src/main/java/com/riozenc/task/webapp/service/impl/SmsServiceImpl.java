@@ -472,8 +472,6 @@ public class SmsServiceImpl implements ISmsService {
         String smsContentTemplate = smsContentInfos.get(0).getSmsContentTemplate();
         ArrearageDomain arrearageDomain = new ArrearageDomain();
         String mon = MonUtils.getMon();
-        String lastMon = MonUtils.getLastMon(mon);
-        arrearageDomain.setMon(Integer.parseInt(lastMon));
         arrearageDomain.setIsSettle(0);
         arrearageDomain.setIsSend(true);
         Map<Long, List<ArrearageDomain>> arrearageDomainsCollect =

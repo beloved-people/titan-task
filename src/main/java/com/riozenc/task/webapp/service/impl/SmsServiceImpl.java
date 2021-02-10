@@ -487,8 +487,7 @@ public class SmsServiceImpl implements ISmsService {
                     .map(ArrearageDomain::getOweMoney)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             Object[] placeholders = new Object[]{entryArrearageDomainList.get(0).getSettlementName(),
-                    entryArrearageDomainList.get(0).getSettlementNo(),
-                    mon.substring(4, 6), "0" + 3, totalOweMoney.setScale(2, RoundingMode.HALF_UP) + ""};
+                    entryArrearageDomainList.get(0).getSettlementNo(), totalOweMoney.setScale(2, RoundingMode.HALF_UP) + ""};
             String msg = MessageFormat.format(smsContentTemplate, placeholders);
             SmsBackup smsBackup = new SmsBackup();
             smsBackup.setSettlementId(key);

@@ -1,5 +1,5 @@
 server:
-  port: 6159
+  port: 10100
   servlet:
     context-path: /taskServer
 spring:
@@ -10,8 +10,8 @@ eureka:
     prefer-ip-address: true
   client:
     serviceUrl:
-      defaultZone: http://titan:df6100@10.39.68.27:6150/eureka/
-#      defaultZone: http://titan:df6100@172.20.100.29:7777/eureka/
+      register-with-eureka: true
+      defaultZone: http://titan:df6100@172.20.100.29:7777/eureka/
 logging:
   level:
     com.riozenc.task: debug

@@ -473,7 +473,7 @@ public class SmsServiceImpl implements ISmsService {
         ArrearageDomain arrearageDomain = new ArrearageDomain();
         String mon = MonUtils.getMon();
         arrearageDomain.setIsSettle(0);
-        arrearageDomain.setIsSend(true);
+        //arrearageDomain.setIsSend(true);
         Map<Long, List<ArrearageDomain>> arrearageDomainsCollect =
                 findByIsSettleMonAndIsSend(arrearageDomain);
         List<Message> messages = new ArrayList<>();
